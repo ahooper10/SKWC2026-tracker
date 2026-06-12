@@ -70,6 +70,7 @@ tr.maybe td{background:rgba(234,179,8,0.1);color:#fbbf24}
 .sc-sub{font-size:11px;color:#444;margin-top:2px}
 .scoring-note{font-size:11px;color:#444;margin-top:10px;padding:8px 12px;background:#131620;border-radius:6px;border:1px solid #1e2130}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 <div class="app">
@@ -216,14 +217,11 @@ const PICKERS=['Steve','Nate','Alex','Ben'];
 const scores={};
 
 // --- Supabase helpers ---
-async function dbFetch(path,opts={}){
-  const {headers:extraHeaders={}, ...restOpts} = opts;
-  const res=await fetch(SUPABASE_URL+'/rest/v1/'+path,{
-    ...restOpts,
-    headers:Object.assign({'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},extraHeaders)
-  });
-  if(!res.ok){const t=await res.text();throw new Error(t);}
-  return res.status===204?null:res.json();
+let supabase = null;
+
+function initSupabase(){
+  const {createClient} = window.supabase;
+  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
 function setSyncBar(state,msg){
@@ -235,8 +233,9 @@ function setSyncBar(state,msg){
 async function loadScores(){
   setSyncBar('loading','⟳ Loading scores...');
   try{
-    const rows=await dbFetch('Scores?select=match_id,home_score,away_score');
-    rows.forEach(r=>{scores[r.match_id]={h:r.home_score??'',a:r.away_score??''};});
+    const {data,error} = await supabase.from('Scores').select('match_id,home_score,away_score');
+    if(error) throw error;
+    data.forEach(r=>{scores[r.match_id]={h:r.home_score??'',a:r.away_score??''};});
     setSyncBar('ok','✓ Live — scores sync across all devices');
     renderGroups();
     if(document.getElementById('view-schedule').classList.contains('active'))renderScheduleList();
@@ -249,11 +248,8 @@ async function loadScores(){
 
 async function saveScore(id,h,a){
   try{
-    await dbFetch('Scores',{
-      method:'POST',
-      headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
-      body:JSON.stringify({match_id:id,home_score:h,away_score:a})
-    });
+    const {error} = await supabase.from('Scores').upsert({match_id:id,home_score:h,away_score:a},{onConflict:'match_id'});
+    if(error) throw error;
     setSyncBar('ok','✓ Saved');
   }catch(e){
     setSyncBar('err','⚠ Save failed — check connection');
@@ -433,6 +429,7 @@ function switchTab(tab){
   else renderPicks();
 }
 
+initSupabase();
 // Poll for updates every 30 seconds so all users stay in sync
 setInterval(loadScores,30000);
 loadScores();
