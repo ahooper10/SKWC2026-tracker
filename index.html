@@ -217,11 +217,11 @@ const PICKERS=['Steve','Nate','Alex','Ben'];
 const scores={};
 
 // --- Supabase helpers ---
-let supabase = null;
+let sbClient = null;
 
 function initSupabase(){
   const {createClient} = window.supabase;
-  supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  sbClient = createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
 function setSyncBar(state,msg){
@@ -233,7 +233,7 @@ function setSyncBar(state,msg){
 async function loadScores(){
   setSyncBar('loading','⟳ Loading scores...');
   try{
-    const {data,error} = await supabase.from('Scores').select('match_id,home_score,away_score');
+    const {data,error} = await sbClient.from('Scores').select('match_id,home_score,away_score');
     if(error) throw error;
     data.forEach(r=>{scores[r.match_id]={h:r.home_score??'',a:r.away_score??''};});
     setSyncBar('ok','✓ Live — scores sync across all devices');
@@ -248,7 +248,7 @@ async function loadScores(){
 
 async function saveScore(id,h,a){
   try{
-    const {error} = await supabase.from('Scores').upsert({match_id:id,home_score:h,away_score:a},{onConflict:'match_id'});
+    const {error} = await sbClient.from('Scores').upsert({match_id:id,home_score:h,away_score:a},{onConflict:'match_id'});
     if(error) throw error;
     setSyncBar('ok','✓ Saved');
   }catch(e){
