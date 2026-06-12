@@ -218,7 +218,7 @@ const scores={};
 // --- Supabase helpers ---
 async function dbFetch(path,opts={}){
   const res=await fetch(SUPABASE_URL+'/rest/v1/'+path,{
-    headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=representation',...(opts.headers||{})},
+    headers:Object.assign({'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},opts.headers||{}),
     ...opts
   });
   if(!res.ok){const t=await res.text();throw new Error(t);}
