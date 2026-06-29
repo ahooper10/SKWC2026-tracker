@@ -95,25 +95,24 @@ const SUPABASE_URL='https://fbkimtroozyoilplfkjg.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZia2ltdHJvb3p5b2lscGxma2pnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzQzMTMsImV4cCI6MjA5Njg1MDMxM30.Jh-Cf1VYjhE052PVuge8o_SPIBNbMvpUVLZLH-sV4do';
 let sbClient=null;
 
-// Round of 32 — fixed bracket, all 16 matches
-// matchId, team1, team2, date, bracket slot
+// Round of 32 — official FIFA fixtures
 const R32=[
-  {id:'r32_1', t1:{f:'🇿🇦',n:'S. Africa'}, t2:{f:'🇨🇦',n:'Canada'}, date:'Jun 28', slot:0},
-  {id:'r32_2', t1:{f:'🇧🇷',n:'Brazil'}, t2:{f:'🇯🇵',n:'Japan'}, date:'Jun 29', slot:1},
-  {id:'r32_3', t1:{f:'🇩🇪',n:'Germany'}, t2:{f:'🇵🇾',n:'Paraguay'}, date:'Jun 29', slot:2},
-  {id:'r32_4', t1:{f:'🇳🇱',n:'Netherlands'}, t2:{f:'🇲🇦',n:'Morocco'}, date:'Jun 30', slot:3},
-  {id:'r32_5', t1:{f:'🇨🇮',n:'Ivory Coast'}, t2:{f:'🇳🇴',n:'Norway'}, date:'Jun 30', slot:4},
-  {id:'r32_6', t1:{f:'🇫🇷',n:'France'}, t2:{f:'🇸🇪',n:'Sweden'}, date:'Jun 30', slot:5},
-  {id:'r32_7', t1:{f:'🇲🇽',n:'Mexico'}, t2:{f:'🇪🇨',n:'Ecuador'}, date:'Jul 1', slot:6},
-  {id:'r32_8', t1:{f:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',n:'England'}, t2:{f:'🇨🇩',n:'DR Congo'}, date:'Jul 1', slot:7},
-  {id:'r32_9', t1:{f:'🇧🇪',n:'Belgium'}, t2:{f:'🇸🇳',n:'Senegal'}, date:'Jul 1', slot:8},
-  {id:'r32_10', t1:{f:'🇺🇸',n:'USA'}, t2:{f:'🇧🇦',n:'Bosnia'}, date:'Jul 2', slot:9},
-  {id:'r32_11', t1:{f:'🇪🇸',n:'Spain'}, t2:{f:'🇩🇿',n:'Algeria'}, date:'Jul 2', slot:10},
-  {id:'r32_12', t1:{f:'🇦🇷',n:'Argentina'}, t2:{f:'🇨🇻',n:'Cabo Verde'}, date:'Jul 2', slot:11},
-  {id:'r32_13', t1:{f:'🇭🇷',n:'Croatia'}, t2:{f:'🇵🇹',n:'Portugal'}, date:'Jul 3', slot:12},
-  {id:'r32_14', t1:{f:'🇦🇺',n:'Australia'}, t2:{f:'🇪🇬',n:'Egypt'}, date:'Jul 3', slot:13},
-  {id:'r32_15', t1:{f:'🇰🇷',n:'S. Korea'}, t2:{f:'🇨🇭',n:'Switzerland'}, date:'Jul 3', slot:14},
-  {id:'r32_16', t1:{f:'🇨🇴',n:'Colombia'}, t2:{f:'🇬🇭',n:'Ghana'}, date:'Jul 4', slot:15},
+  {id:'r32_1',  t1:{f:'🇿🇦',n:'S. Africa'},   t2:{f:'🇨🇦',n:'Canada'},      date:'Jun 28 (FT)', slot:0},
+  {id:'r32_2',  t1:{f:'🇧🇷',n:'Brazil'},       t2:{f:'🇯🇵',n:'Japan'},       date:'Jun 29 1pm',  slot:1},
+  {id:'r32_3',  t1:{f:'🇩🇪',n:'Germany'},      t2:{f:'🇵🇾',n:'Paraguay'},    date:'Jun 29 4:30pm',slot:2},
+  {id:'r32_4',  t1:{f:'🇳🇱',n:'Netherlands'},  t2:{f:'🇲🇦',n:'Morocco'},     date:'Jun 29 9pm',  slot:3},
+  {id:'r32_5',  t1:{f:'🇨🇮',n:'Ivory Coast'},  t2:{f:'🇳🇴',n:'Norway'},      date:'Jun 30 1pm',  slot:4},
+  {id:'r32_6',  t1:{f:'🇫🇷',n:'France'},       t2:{f:'🇸🇪',n:'Sweden'},      date:'Jun 30 5pm',  slot:5},
+  {id:'r32_7',  t1:{f:'🇲🇽',n:'Mexico'},       t2:{f:'🇪🇨',n:'Ecuador'},     date:'Jun 30 9pm',  slot:6},
+  {id:'r32_8',  t1:{f:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',n:'England'},     t2:{f:'🇨🇩',n:'DR Congo'},    date:'Jul 1 12pm',  slot:7},
+  {id:'r32_9',  t1:{f:'🇧🇪',n:'Belgium'},      t2:{f:'🇸🇳',n:'Senegal'},     date:'Jul 1 4pm',   slot:8},
+  {id:'r32_10', t1:{f:'🇺🇸',n:'USA'},          t2:{f:'🇧🇦',n:'Bosnia'},      date:'Jul 1 8pm',   slot:9},
+  {id:'r32_11', t1:{f:'🇪🇸',n:'Spain'},        t2:{f:'🇦🇹',n:'Austria'},     date:'Jul 2 3pm',   slot:10},
+  {id:'r32_12', t1:{f:'🇵🇹',n:'Portugal'},     t2:{f:'🇭🇷',n:'Croatia'},     date:'Jul 2 7pm',   slot:11},
+  {id:'r32_13', t1:{f:'🇨🇭',n:'Switzerland'},  t2:{f:'🇩🇿',n:'Algeria'},     date:'Jul 2 11pm',  slot:12},
+  {id:'r32_14', t1:{f:'🇦🇺',n:'Australia'},    t2:{f:'🇪🇬',n:'Egypt'},       date:'Jul 3 2pm',   slot:13},
+  {id:'r32_15', t1:{f:'🇦🇷',n:'Argentina'},    t2:{f:'🇨🇻',n:'Cabo Verde'},  date:'Jul 3 6pm',   slot:14},
+  {id:'r32_16', t1:{f:'🇨🇴',n:'Colombia'},     t2:{f:'🇬🇭',n:'Ghana'},       date:'Jul 3 9:30pm',slot:15},
 ];
 
 // R16 bracket pairings (winner of match X vs winner of match Y)
@@ -148,7 +147,7 @@ const PICKERS=['Steve','Nate','Alex','Ben'];
 
 // Lock times — picks for each round freeze at kickoff of first match (ET = UTC-4)
 const LOCK_TIMES={
-  r32: new Date('2026-06-30T00:00:00Z'), // Jun 29 8pm ET
+  r32: new Date('2026-07-03T17:00:00Z'), // Jul 3 1pm ET — before last R32 matches
   r16: new Date('2026-07-05T17:00:00Z'), // Jul 5 1pm ET
   qf:  new Date('2026-07-10T17:00:00Z'), // Jul 10 1pm ET
   sf:  new Date('2026-07-14T17:00:00Z'), // Jul 14 1pm ET
@@ -365,7 +364,7 @@ function renderAll(){
     note.innerHTML='<strong>Results mode</strong> — click the actual winner of each match. This updates for everyone.';
   } else {
     const r32locked=isLocked('r32');
-    const lockMsg=r32locked?' <span style="color:#f87171">🔒 R32 picks locked</span>':'<span style="color:#4ade80"> — picks lock Jun 29 at 8pm ET</span>';
+    const lockMsg=r32locked?' <span style="color:#f87171">🔒 R32 picks locked</span>':'<span style="color:#4ade80"> — picks lock Jul 3 at 1pm ET</span>';
     note.innerHTML=`Viewing <strong>${currentPicker}</strong>'s picks — click a team to pick them as the winner.${lockMsg}`;
   }
 }
