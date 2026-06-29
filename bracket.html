@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKWC 2026 Bracket Challenge</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e8eaf0;min-height:100vh;padding:16px}
+.app{max-width:1100px;margin:0 auto}
+h1{font-size:18px;font-weight:600;color:#fff;margin-bottom:4px}
+.subtitle{font-size:12px;color:#666;margin-bottom:12px}
+.sync-bar{font-size:11px;padding:6px 12px;border-radius:6px;margin-bottom:14px;display:inline-flex;align-items:center;gap:6px}
+.sync-ok{background:rgba(29,158,117,0.15);color:#4ade80;border:1px solid rgba(29,158,117,0.3)}
+.sync-err{background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3)}
+.sync-loading{background:rgba(99,102,241,0.15);color:#818cf8;border:1px solid rgba(99,102,241,0.3)}
+.picker-tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.picker-tab{padding:7px 16px;font-size:13px;font-weight:500;border:1px solid #2a2d3a;border-radius:999px;background:transparent;color:#888;cursor:pointer;transition:all .15s}
+.picker-tab:hover{color:#ccc;border-color:#444}
+.picker-tab.active{background:rgba(99,102,241,0.2);color:#818cf8;border-color:#4f46e5}
+.round-label{font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;margin-top:20px}
+.round-label:first-child{margin-top:0}
+.bracket-round{display:grid;gap:8px}
+.r32{grid-template-columns:repeat(4,1fr)}
+.r16{grid-template-columns:repeat(4,1fr)}
+.qf{grid-template-columns:repeat(4,1fr)}
+.sf{grid-template-columns:repeat(2,1fr)}
+.fn{grid-template-columns:1fr}
+@media(max-width:700px){.r32,.r16,.qf{grid-template-columns:repeat(2,1fr)}.sf{grid-template-columns:1fr}}
+.match-card{background:#1a1d27;border:1px solid #2a2d3a;border-radius:8px;overflow:hidden}
+.match-date{font-size:10px;color:#444;padding:5px 8px;border-bottom:1px solid #1e2130}
+.team-row{display:flex;align-items:center;gap:6px;padding:7px 8px;cursor:pointer;transition:background .15s;border-bottom:1px solid #1e2130}
+.team-row:last-child{border-bottom:none}
+.team-row:hover{background:rgba(99,102,241,0.1)}
+.team-row.picked{background:rgba(29,158,117,0.15)}
+.team-row.picked .tname{color:#4ade80;font-weight:600}
+.team-row.eliminated{opacity:0.35}
+.team-row.correct{background:rgba(29,158,117,0.2)}
+.team-row.wrong{background:rgba(239,68,68,0.1)}
+.tflag{font-size:15px;flex-shrink:0}
+.tname{font-size:12px;color:#ccc;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tname.tbd{color:#444;font-style:italic}
+.pick-dot{width:8px;height:8px;border-radius:50%;border:1px solid #333;flex-shrink:0}
+.pick-dot.filled{background:#4ade80;border-color:#4ade80}
+.score-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;margin-top:4px}
+.score-card{background:#1a1d27;border:1px solid #2a2d3a;border-radius:10px;padding:12px;text-align:center}
+.score-card.leader{border-color:#4f46e5;background:rgba(99,102,241,0.1)}
+.sc-name{font-size:12px;color:#888;margin-bottom:4px}
+.sc-pts{font-size:26px;font-weight:700;color:#fff}
+.sc-rank{font-size:11px;color:#4ade80;margin-top:2px}
+.sc-sub{font-size:11px;color:#444;margin-top:2px}
+.legend{font-size:11px;color:#444;margin-top:12px}
+.mode-note{font-size:11px;color:#555;margin-bottom:12px;padding:8px 12px;background:#131620;border-radius:6px;border:1px solid #1e2130}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>⚽ SKWC 2026 — Bracket Challenge</h1>
+  <p class="subtitle">Pick your winners for each round. 1pt R32 · 2pt R16 · 4pt QF · 8pt SF · 16pt Final</p>
+  <div id="sync-bar" class="sync-bar sync-loading">⟳ Connecting...</div>
+
+  <div class="picker-tabs" id="picker-tabs">
+    <button class="picker-tab active" onclick="setPicker('Steve')">Steve</button>
+    <button class="picker-tab" onclick="setPicker('Nate')">Nate</button>
+    <button class="picker-tab" onclick="setPicker('Alex')">Alex</button>
+    <button class="picker-tab" onclick="setPicker('Ben')">Ben</button>
+    <button class="picker-tab" onclick="setPicker('RESULTS')">📋 Results</button>
+  </div>
+
+  <div class="mode-note" id="mode-note">Viewing <strong>Steve</strong>'s picks — click a team to pick them as the winner. Click "Results" tab to enter actual results.</div>
+
+  <div class="score-bar" id="score-bar"></div>
+
+  <div class="round-label">Round of 32 — Jun 28–Jul 3</div>
+  <div class="bracket-round r32" id="r32"></div>
+
+  <div class="round-label">Round of 16 — Jul 5–8</div>
+  <div class="bracket-round r16" id="r16"></div>
+
+  <div class="round-label">Quarterfinals — Jul 10–11</div>
+  <div class="bracket-round qf" id="qf"></div>
+
+  <div class="round-label">Semifinals — Jul 14–15</div>
+  <div class="bracket-round sf" id="sf"></div>
+
+  <div class="round-label">Final — Jul 19</div>
+  <div class="bracket-round fn" id="fn"></div>
+
+  <div class="legend">Scoring: 1pt correct R32 pick · 2pt R16 · 4pt QF · 8pt SF · 16pt Final · Picks auto-save to database</div>
+</div>
+
+<script>
+const SUPABASE_URL='https://fbkimtroozyoilplfkjg.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZia2ltdHJvb3p5b2lscGxma2pnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEyNzQzMTMsImV4cCI6MjA5Njg1MDMxM30.Jh-Cf1VYjhE052PVuge8o_SPIBNbMvpUVLZLH-sV4do';
+let sbClient=null;
+
+// Round of 32 — fixed bracket, all 16 matches
+// matchId, team1, team2, date, bracket slot
+const R32=[
+  {id:'r32_1', t1:{f:'🇿🇦',n:'S. Africa'}, t2:{f:'🇨🇦',n:'Canada'}, date:'Jun 28', slot:0},
+  {id:'r32_2', t1:{f:'🇧🇷',n:'Brazil'}, t2:{f:'🇯🇵',n:'Japan'}, date:'Jun 29', slot:1},
+  {id:'r32_3', t1:{f:'🇩🇪',n:'Germany'}, t2:{f:'🇵🇾',n:'Paraguay'}, date:'Jun 29', slot:2},
+  {id:'r32_4', t1:{f:'🇳🇱',n:'Netherlands'}, t2:{f:'🇲🇦',n:'Morocco'}, date:'Jun 30', slot:3},
+  {id:'r32_5', t1:{f:'🇨🇮',n:'Ivory Coast'}, t2:{f:'🇳🇴',n:'Norway'}, date:'Jun 30', slot:4},
+  {id:'r32_6', t1:{f:'🇫🇷',n:'France'}, t2:{f:'🇸🇪',n:'Sweden'}, date:'Jun 30', slot:5},
+  {id:'r32_7', t1:{f:'🇲🇽',n:'Mexico'}, t2:{f:'🇪🇨',n:'Ecuador'}, date:'Jul 1', slot:6},
+  {id:'r32_8', t1:{f:'🏴󠁧󠁢󠁥󠁮󠁧󠁿',n:'England'}, t2:{f:'🇨🇩',n:'DR Congo'}, date:'Jul 1', slot:7},
+  {id:'r32_9', t1:{f:'🇧🇪',n:'Belgium'}, t2:{f:'🇸🇳',n:'Senegal'}, date:'Jul 1', slot:8},
+  {id:'r32_10', t1:{f:'🇺🇸',n:'USA'}, t2:{f:'🇧🇦',n:'Bosnia'}, date:'Jul 2', slot:9},
+  {id:'r32_11', t1:{f:'🇪🇸',n:'Spain'}, t2:{f:'🇩🇿',n:'Algeria'}, date:'Jul 2', slot:10},
+  {id:'r32_12', t1:{f:'🇦🇷',n:'Argentina'}, t2:{f:'🇨🇻',n:'Cabo Verde'}, date:'Jul 2', slot:11},
+  {id:'r32_13', t1:{f:'🇭🇷',n:'Croatia'}, t2:{f:'🇵🇹',n:'Portugal'}, date:'Jul 3', slot:12},
+  {id:'r32_14', t1:{f:'🇦🇺',n:'Australia'}, t2:{f:'🇪🇬',n:'Egypt'}, date:'Jul 3', slot:13},
+  {id:'r32_15', t1:{f:'🇰🇷',n:'S. Korea'}, t2:{f:'🇨🇭',n:'Switzerland'}, date:'Jul 3', slot:14},
+  {id:'r32_16', t1:{f:'🇨🇴',n:'Colombia'}, t2:{f:'🇬🇭',n:'Ghana'}, date:'Jul 4', slot:15},
+];
+
+// R16 bracket pairings (winner of match X vs winner of match Y)
+const R16=[
+  {id:'r16_1', src:['r32_1','r32_2'], date:'Jul 5', slot:0},
+  {id:'r16_2', src:['r32_3','r32_4'], date:'Jul 5', slot:1},
+  {id:'r16_3', src:['r32_5','r32_6'], date:'Jul 6', slot:2},
+  {id:'r16_4', src:['r32_7','r32_8'], date:'Jul 6', slot:3},
+  {id:'r16_5', src:['r32_9','r32_10'], date:'Jul 7', slot:4},
+  {id:'r16_6', src:['r32_11','r32_12'], date:'Jul 7', slot:5},
+  {id:'r16_7', src:['r32_13','r32_14'], date:'Jul 8', slot:6},
+  {id:'r16_8', src:['r32_15','r32_16'], date:'Jul 8', slot:7},
+];
+
+const QF=[
+  {id:'qf_1', src:['r16_1','r16_2'], date:'Jul 10', slot:0},
+  {id:'qf_2', src:['r16_3','r16_4'], date:'Jul 10', slot:1},
+  {id:'qf_3', src:['r16_5','r16_6'], date:'Jul 11', slot:2},
+  {id:'qf_4', src:['r16_7','r16_8'], date:'Jul 11', slot:3},
+];
+
+const SF=[
+  {id:'sf_1', src:['qf_1','qf_2'], date:'Jul 14', slot:0},
+  {id:'sf_2', src:['qf_3','qf_4'], date:'Jul 15', slot:1},
+];
+
+const FINAL=[
+  {id:'final_1', src:['sf_1','sf_2'], date:'Jul 19', slot:0},
+];
+
+const PICKERS=['Steve','Nate','Alex','Ben'];
+const POINTS={'r32':1,'r16':2,'qf':4,'sf':8,'final':16};
+
+// picks[picker][matchId] = teamName
+// results[matchId] = teamName (actual winner)
+let picks={Steve:{},Nate:{},Alex:{},Ben:{}};
+let results={};
+let currentPicker='Steve';
+
+function setSyncBar(state,msg){
+  const el=document.getElementById('sync-bar');
+  el.className='sync-bar sync-'+state;
+  el.textContent=msg;
+}
+
+async function initDB(){
+  const {createClient}=window.supabase;
+  sbClient=createClient(SUPABASE_URL,SUPABASE_KEY);
+  setSyncBar('loading','⟳ Loading bracket data...');
+  try{
+    // Load picks
+    const {data:pData,error:pErr}=await sbClient.from('bracket_picks').select('*');
+    if(pErr) throw pErr;
+    pData.forEach(r=>{
+      if(!picks[r.picker]) picks[r.picker]={};
+      picks[r.picker][r.match_id]=r.winner;
+    });
+    // Load results
+    const {data:rData,error:rErr}=await sbClient.from('bracket_results').select('*');
+    if(rErr) throw rErr;
+    rData.forEach(r=>{ results[r.match_id]=r.winner; });
+    setSyncBar('ok','✓ Live — picks sync across all devices');
+  }catch(e){
+    setSyncBar('err','⚠ DB error — picks save locally only');
+    console.error(e);
+  }
+  renderAll();
+}
+
+async function savePick(picker,matchId,winner){
+  if(!sbClient) return;
+  try{
+    await sbClient.from('bracket_picks').upsert({picker,match_id:matchId,winner},{onConflict:'picker,match_id'});
+    setSyncBar('ok','✓ Saved');
+  }catch(e){
+    setSyncBar('err','⚠ Save failed');
+    console.error(e);
+  }
+}
+
+async function saveResult(matchId,winner){
+  if(!sbClient) return;
+  try{
+    await sbClient.from('bracket_results').upsert({match_id:matchId,winner},{onConflict:'match_id'});
+    setSyncBar('ok','✓ Result saved');
+  }catch(e){
+    setSyncBar('err','⚠ Save failed');
+    console.error(e);
+  }
+}
+
+function getWinner(matchId){
+  // Returns {f,n} of winner from results or null
+  const w=results[matchId];
+  if(!w) return null;
+  return findTeam(w);
+}
+
+function getPickedWinner(picker,matchId){
+  const w=picks[picker][matchId];
+  if(!w) return null;
+  return findTeam(w);
+}
+
+function getTeamsForMatch(match){
+  if(match.t1) return [match.t1, match.t2]; // R32
+  // Derived match — get winners of source matches
+  const [s1,s2]=match.src;
+  const w1=currentPicker==='RESULTS'?getWinner(s1):getPickedWinner(currentPicker,s1);
+  const w2=currentPicker==='RESULTS'?getWinner(s2):getPickedWinner(currentPicker,s2);
+  return [w1,w2];
+}
+
+function findTeam(name){
+  for(const m of R32){
+    if(m.t1.n===name) return m.t1;
+    if(m.t2.n===name) return m.t2;
+  }
+  return {f:'',n:name};
+}
+
+function handlePick(matchId,teamName){
+  if(currentPicker==='RESULTS'){
+    results[matchId]=teamName;
+    saveResult(matchId,teamName);
+  } else {
+    picks[currentPicker][matchId]=teamName;
+    savePick(currentPicker,matchId,teamName);
+  }
+  renderAll();
+}
+
+function renderMatch(match,roundKey){
+  const [t1,t2]=getTeamsForMatch(match);
+  const pickedWinner=currentPicker==='RESULTS'?results[match.id]:picks[currentPicker]?.[match.id];
+  const actualWinner=results[match.id];
+
+  const card=document.createElement('div');
+  card.className='match-card';
+
+  const dateEl=document.createElement('div');
+  dateEl.className='match-date';
+  dateEl.textContent=match.date;
+  card.appendChild(dateEl);
+
+  [t1,t2].forEach(team=>{
+    const row=document.createElement('div');
+    row.className='team-row';
+    const isTBD=!team;
+    const name=team?.n||'TBD';
+    const flag=team?.f||'';
+    const isPicked=pickedWinner===name&&!isTBD;
+    const isActualWinner=actualWinner===name&&!isTBD;
+    const isEliminated=actualWinner&&actualWinner!==name&&!isTBD;
+
+    if(isPicked) row.classList.add('picked');
+    if(isEliminated) row.classList.add('eliminated');
+    if(currentPicker!=='RESULTS'&&isActualWinner&&isPicked) { row.classList.remove('picked'); row.classList.add('correct'); }
+    if(currentPicker!=='RESULTS'&&isActualWinner&&pickedWinner&&pickedWinner!==name&&picks[currentPicker]?.[match.id]===name) row.classList.add('wrong');
+
+    row.innerHTML=`<span class="tflag">${flag}</span><span class="tname${isTBD?' tbd':''}">${name}</span><span class="pick-dot${isPicked||isActualWinner?' filled':''}"></span>`;
+
+    if(!isTBD){
+      row.onclick=()=>handlePick(match.id,name);
+    }
+    card.appendChild(row);
+  });
+
+  return card;
+}
+
+function renderRound(matches,containerId,roundKey){
+  const container=document.getElementById(containerId);
+  container.innerHTML='';
+  matches.forEach(m=>{
+    container.appendChild(renderMatch(m,roundKey));
+  });
+}
+
+function calcScores(){
+  const scores={};
+  PICKERS.forEach(p=>{
+    let pts=0;
+    [...R32,...R16,...QF,...SF,...FINAL].forEach(m=>{
+      const roundKey=m.id.split('_')[0];
+      const pts_val=POINTS[roundKey]||1;
+      const actual=results[m.id];
+      const picked=picks[p]?.[m.id];
+      if(actual&&picked&&actual===picked) pts+=pts_val;
+    });
+    scores[p]=pts;
+  });
+  return scores;
+}
+
+function renderScores(){
+  const bar=document.getElementById('score-bar');
+  bar.innerHTML='';
+  const scores=calcScores();
+  const sorted=PICKERS.slice().sort((a,b)=>scores[b]-scores[a]);
+  sorted.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.className='score-card'+(i===0&&scores[p]>0?' leader':'');
+    div.innerHTML=`<div class="sc-name">${p}</div><div class="sc-pts">${scores[p]}</div>${i===0&&scores[p]>0?'<div class="sc-rank">🏆 Leading</div>':'<div class="sc-sub">pts</div>'}`;
+    bar.appendChild(div);
+  });
+}
+
+function renderAll(){
+  renderRound(R32,'r32','r32');
+  renderRound(R16,'r16','r16');
+  renderRound(QF,'qf','qf');
+  renderRound(SF,'sf','sf');
+  renderRound(FINAL,'fn','final');
+  renderScores();
+  const note=document.getElementById('mode-note');
+  if(currentPicker==='RESULTS'){
+    note.innerHTML='<strong>Results mode</strong> — click the actual winner of each match. This updates for everyone.';
+  } else {
+    note.innerHTML=`Viewing <strong>${currentPicker}</strong>'s picks — click a team to pick them as the winner.`;
+  }
+}
+
+function setPicker(name){
+  currentPicker=name;
+  document.querySelectorAll('.picker-tab').forEach(t=>t.classList.remove('active'));
+  const tabs=['Steve','Nate','Alex','Ben','RESULTS'];
+  const idx=tabs.indexOf(name);
+  document.querySelectorAll('.picker-tab')[idx]?.classList.add('active');
+  renderAll();
+}
+
+// Init
+window.addEventListener('load',initDB);
+</script>
+</body>
+</html>
