@@ -145,6 +145,25 @@ const FINAL=[
 ];
 
 const PICKERS=['Steve','Nate','Alex','Ben'];
+
+// Lock times — picks for each round freeze at kickoff of first match (ET = UTC-4)
+const LOCK_TIMES={
+  r32: new Date('2026-06-28T19:00:00Z'), // Jun 28 3pm ET
+  r16: new Date('2026-07-05T17:00:00Z'), // Jul 5 1pm ET
+  qf:  new Date('2026-07-10T17:00:00Z'), // Jul 10 1pm ET
+  sf:  new Date('2026-07-14T17:00:00Z'), // Jul 14 1pm ET
+  final: new Date('2026-07-19T17:00:00Z'), // Jul 19 1pm ET
+};
+
+function isLocked(roundKey){
+  const t=LOCK_TIMES[roundKey];
+  if(!t) return false;
+  return new Date() >= t;
+}
+
+function roundKeyForMatch(matchId){
+  return matchId.split('_')[0];
+}
 const POINTS={'r32':1,'r16':2,'qf':4,'sf':8,'final':16};
 
 // picks[picker][matchId] = teamName
@@ -239,10 +258,16 @@ function handlePick(matchId,teamName){
   if(currentPicker==='RESULTS'){
     results[matchId]=teamName;
     saveResult(matchId,teamName);
-  } else {
-    picks[currentPicker][matchId]=teamName;
-    savePick(currentPicker,matchId,teamName);
+    renderAll();
+    return;
   }
+  const rk=roundKeyForMatch(matchId);
+  if(isLocked(rk)){
+    alert('Picks for this round are locked!');
+    return;
+  }
+  picks[currentPicker][matchId]=teamName;
+  savePick(currentPicker,matchId,teamName);
   renderAll();
 }
 
@@ -276,8 +301,14 @@ function renderMatch(match,roundKey){
 
     row.innerHTML=`<span class="tflag">${flag}</span><span class="tname${isTBD?' tbd':''}">${name}</span><span class="pick-dot${isPicked||isActualWinner?' filled':''}"></span>`;
 
-    if(!isTBD){
+    const rk=roundKeyForMatch(match.id);
+    const locked=isLocked(rk)&&currentPicker!=='RESULTS';
+    if(!isTBD&&!locked){
       row.onclick=()=>handlePick(match.id,name);
+      row.style.cursor='pointer';
+    } else if(locked){
+      row.style.cursor='default';
+      row.style.opacity=row.classList.contains('eliminated')?'0.3':'1';
     }
     card.appendChild(row);
   });
@@ -333,7 +364,9 @@ function renderAll(){
   if(currentPicker==='RESULTS'){
     note.innerHTML='<strong>Results mode</strong> — click the actual winner of each match. This updates for everyone.';
   } else {
-    note.innerHTML=`Viewing <strong>${currentPicker}</strong>'s picks — click a team to pick them as the winner.`;
+    const r32locked=isLocked('r32');
+    const lockMsg=r32locked?' <span style="color:#f87171">🔒 R32 picks locked</span>':'<span style="color:#4ade80"> — picks lock Jun 28 at 3pm ET</span>';
+    note.innerHTML=`Viewing <strong>${currentPicker}</strong>'s picks — click a team to pick them as the winner.${lockMsg}`;
   }
 }
 
